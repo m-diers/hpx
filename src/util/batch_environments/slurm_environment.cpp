@@ -334,42 +334,40 @@ namespace hpx { namespace util { namespace batch_environments
 
     void slurm_environment::retrieve_number_of_threads()
     {
-        char *slurm_cpus_on_node = std::getenv("SLURM_CPUS_ON_NODE");
-        if(slurm_cpus_on_node)
+        char *slurm_cpus_per_task = std::getenv("SLURM_CPUS_PER_TASK");
+        if(slurm_cpus_per_task)
+            num_threads_ = safe_lexical_cast<std::size_t>(slurm_cpus_per_task);
+        else
         {
-            std::size_t slurm_num_cpus =
-                safe_lexical_cast<std::size_t>(slurm_cpus_on_node);
-            threads::topology const & top = threads::create_topology();
-            std::size_t num_pus = top.get_number_of_pus();
-
-            // Figure out if we got the number of logical cores (including
-            // hyper-threading) or just the number of physical cores.
-            char *slurm_cpus_per_task = std::getenv("SLURM_CPUS_PER_TASK");
-            if(slurm_num_cpus == num_pus)
+            char *slurm_job_cpus_on_node = std::getenv("SLURM_JOB_CPUS_PER_NODE");
+            if(slurm_job_cpus_on_node)
             {
-                if(slurm_cpus_per_task)
-                    num_threads_
-                        = safe_lexical_cast<std::size_t>(slurm_cpus_per_task);
-                else
-                    num_threads_ = num_pus / num_tasks_;
-            }
-            else
-            {
-                std::size_t num_cores = 0;
-                if(slurm_cpus_per_task)
-                {
-                    num_cores
-                        = safe_lexical_cast<std::size_t>(slurm_cpus_per_task);
-                }
-                else
-                {
-                    num_cores = slurm_num_cpus / num_tasks_;
-                }
-                HPX_ASSERT(num_cores <= top.get_number_of_cores());
+                std::vector<std::string> slurm_job_cpus_on_node_tokens;
+                boost::split(slurm_job_cpus_on_node_tokens, slurm_job_cpus_on_node, boost::is_any_of(","));
 
-                for(std::size_t core = 0; core != num_cores; ++core)
+                std::vector<std::size_t> slurm_job_cpus_on_node_list;
+                for( auto& cpu_token : slurm_job_cpus_on_node_tokens )
                 {
-                    num_threads_ += top.get_number_of_core_pus(core);
+                    std::size_t repetition = 1;
+                    std::size_t paren_pos = cpu_token.find_first_of('(');
+                    if(paren_pos != std::string::npos)
+                    {
+                        HPX_ASSERT(cpu_token[paren_pos + 1] == 'x');
+                        HPX_ASSERT(cpu_token[cpu_token.size() - 1] == ')');
+                        std::size_t begin = paren_pos + 2;
+                        std::size_t end = cpu_token.size() - 1;
+                        repetition = safe_lexical_cast<std::size_t>(cpu_token.substr(paren_pos + 2, end - begin));
+                    }
+                    std::size_t cpu_value = safe_lexical_cast<std::size_t>(cpu_token.substr(0, paren_pos));
+                    std::fill_n( std::back_inserter( slurm_job_cpus_on_node_list ), repetition, cpu_value );
+                };
+
+                char *slurm_node_id = std::getenv("SLURM_NODEID");
+                if(slurm_node_id)
+                {
+                    std::size_t node_id = safe_lexical_cast<std::size_t>(slurm_node_id);
+                    HPX_ASSERT(node_id < slurm_job_cpus_on_node_list.size());
+                    num_threads_ = slurm_job_cpus_on_node_list[node_id] / num_tasks_;
                 }
             }
         }
