@@ -47,7 +47,10 @@ namespace hpx { namespace util { namespace batch_environments
             node_num_ = safe_lexical_cast<std::size_t>(node_num);
 
             // Retrieve number of localities
-            retrieve_number_of_localities(debug);
+            retrieve_number_of_localities();
+
+            // Retrieve number of localities
+            retrieve_number_of_tasks();
 
             // Get the list of nodes
             if(nodelist.empty())
@@ -60,12 +63,9 @@ namespace hpx { namespace util { namespace batch_environments
         }
     }
 
-    void slurm_environment::retrieve_number_of_localities(bool debug)
+    void slurm_environment::retrieve_number_of_localities()
     {
-        char* tasks_per_node = std::getenv("SLURM_STEP_TASKS_PER_NODE");
         char *total_num_tasks = std::getenv("SLURM_STEP_NUM_TASKS");
-        char *num_nodes = std::getenv("SLURM_STEP_NUM_NODES");
-
         if(total_num_tasks)
         {
             num_localities_ = safe_lexical_cast<std::size_t>(total_num_tasks);
@@ -74,78 +74,51 @@ namespace hpx { namespace util { namespace batch_environments
         {
             num_localities_ = 1;
         }
+    }
 
-        std::size_t task_count = 0;
-        if (tasks_per_node)
-        {
-            if (debug) {
-                std::cerr << "SLURM tasks per node found (SLURM_STEP_TASKS_PER_NODE): "
-                    << tasks_per_node << std::endl;
-            }
+    void slurm_environment::retrieve_number_of_tasks()
+    {
+       char *slurm_step_tasks_per_node = std::getenv("SLURM_STEP_TASKS_PER_NODE");
+       if(slurm_step_tasks_per_node)
+       {
+          std::vector<std::string> slurm_step_tasks_per_node_tokens;
+          boost::split(slurm_step_tasks_per_node_tokens, slurm_step_tasks_per_node, boost::is_any_of(","));
 
-            std::vector<std::string> node_tokens;
-            boost::split(node_tokens, tasks_per_node, boost::is_any_of(","));
+          char *slurm_node_id = std::getenv("SLURM_NODEID");
+          HPX_ASSERT(slurm_node_id != nullptr);
+          if(slurm_node_id)
+          {
+              std::size_t node_id = safe_lexical_cast<std::size_t>(slurm_node_id);
+              std::size_t task_count = 0;
+              for( auto& slurm_step_tasks_per_node_token : slurm_step_tasks_per_node_tokens )
+              {
+                  std::size_t paren_pos = slurm_step_tasks_per_node_token.find_first_of('(');
+                  if(paren_pos != std::string::npos)
+                  {
+                      HPX_ASSERT(slurm_step_tasks_per_node_token[paren_pos + 1] == 'x');
+                      HPX_ASSERT(slurm_step_tasks_per_node_token[slurm_step_tasks_per_node_token.size() - 1] == ')');
+                      std::size_t begin = paren_pos + 2;
+                      std::size_t end = slurm_step_tasks_per_node_token.size() - 1;
+                      task_count += safe_lexical_cast<std::size_t>(slurm_step_tasks_per_node_token.substr(paren_pos + 2, end - begin));
+                  }
+                  else
+                  {
+                      task_count += 1;
+                  }
 
-            if (node_tokens.size() == 1 &&
-                node_tokens[0].find_first_of('x') == std::string::npos)
-            {
-                num_tasks_ = safe_lexical_cast<std::size_t>(node_tokens[0]);
-            }
-            else
-            {
-                for(std::string & node_token: node_tokens)
-                {
-                    std::size_t paren_pos = node_token.find_first_of('(');
-                    HPX_ASSERT(paren_pos != std::string::npos);
-                    std::size_t num_tasks
-                        = safe_lexical_cast<std::size_t>(
-                                node_token.substr(0, paren_pos));
-                    std::size_t repetition = 1;
-                    if(paren_pos != std::string::npos)
-                    {
-                        HPX_ASSERT(node_token[paren_pos + 1] == 'x');
-                        HPX_ASSERT(node_token[node_token.size() - 1] == ')');
-                        std::size_t begin = paren_pos + 2;
-                        std::size_t end = node_token.size() - 1;
-                        repetition =
-                            safe_lexical_cast<std::size_t>(
-                                node_token.substr(paren_pos + 2, end - begin));
-                    }
-
-                    std::size_t next_task_count
-                        = task_count + num_tasks * repetition;
-                    if(node_num_ >= task_count && node_num_ < next_task_count)
-                    {
-                        num_tasks_ = num_tasks;
-                    }
-
-                    task_count = next_task_count;
-
-                    if(task_count > node_num_)
-                    {
-                        if (debug) {
-                            std::cerr
-                                << "SLURM node number outside of available "
-                                    "list of tasks"
-                                << std::endl;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-        else
-        {
-            num_tasks_ = 1;
-            task_count = 1;
-        }
-
-        if (task_count != num_localities_ && num_nodes)
-        {
-            num_tasks_
-                = num_localities_
-                / safe_lexical_cast<std::size_t>(num_nodes);
-        }
+                  if( task_count > node_id )
+                  {
+                     num_tasks_ = safe_lexical_cast<std::size_t>(slurm_step_tasks_per_node_token.substr(0, paren_pos));
+                     break;
+                  }
+              }
+              HPX_ASSERT( num_tasks_ );
+           }
+       }
+       else
+       {
+           num_tasks_ = 1;
+       }
     }
 
     struct construct_nodelist
@@ -340,34 +313,40 @@ namespace hpx { namespace util { namespace batch_environments
         else
         {
             char *slurm_job_cpus_on_node = std::getenv("SLURM_JOB_CPUS_PER_NODE");
+            HPX_ASSERT(slurm_job_cpus_on_node != nullptr);
             if(slurm_job_cpus_on_node)
             {
                 std::vector<std::string> slurm_job_cpus_on_node_tokens;
                 boost::split(slurm_job_cpus_on_node_tokens, slurm_job_cpus_on_node, boost::is_any_of(","));
 
-                std::vector<std::size_t> slurm_job_cpus_on_node_list;
-                for( auto& cpu_token : slurm_job_cpus_on_node_tokens )
-                {
-                    std::size_t repetition = 1;
-                    std::size_t paren_pos = cpu_token.find_first_of('(');
-                    if(paren_pos != std::string::npos)
-                    {
-                        HPX_ASSERT(cpu_token[paren_pos + 1] == 'x');
-                        HPX_ASSERT(cpu_token[cpu_token.size() - 1] == ')');
-                        std::size_t begin = paren_pos + 2;
-                        std::size_t end = cpu_token.size() - 1;
-                        repetition = safe_lexical_cast<std::size_t>(cpu_token.substr(paren_pos + 2, end - begin));
-                    }
-                    std::size_t cpu_value = safe_lexical_cast<std::size_t>(cpu_token.substr(0, paren_pos));
-                    std::fill_n( std::back_inserter( slurm_job_cpus_on_node_list ), repetition, cpu_value );
-                };
-
                 char *slurm_node_id = std::getenv("SLURM_NODEID");
+                HPX_ASSERT(slurm_node_id != nullptr);
                 if(slurm_node_id)
                 {
                     std::size_t node_id = safe_lexical_cast<std::size_t>(slurm_node_id);
-                    HPX_ASSERT(node_id < slurm_job_cpus_on_node_list.size());
-                    num_threads_ = slurm_job_cpus_on_node_list[node_id] / num_tasks_;
+                    std::size_t task_count = 0;
+                    for( auto& slurm_job_cpus_on_node_token : slurm_job_cpus_on_node_tokens )
+                    {
+                        std::size_t paren_pos = slurm_job_cpus_on_node_token.find_first_of('(');
+                        if(paren_pos != std::string::npos)
+                        {
+                            HPX_ASSERT(slurm_job_cpus_on_node_token[paren_pos + 1] == 'x');
+                            HPX_ASSERT(slurm_job_cpus_on_node_token[slurm_job_cpus_on_node_token.size() - 1] == ')');
+                            std::size_t begin = paren_pos + 2;
+                            std::size_t end = slurm_job_cpus_on_node_token.size() - 1;
+                            task_count += safe_lexical_cast<std::size_t>(slurm_job_cpus_on_node_token.substr(paren_pos + 2, end - begin));
+                        }
+                        else
+                        {
+                            task_count += 1;
+                        }
+                        if( task_count > node_id )
+                        {
+                           num_threads_ = safe_lexical_cast<std::size_t>(slurm_job_cpus_on_node_token.substr(0, paren_pos)) / num_tasks_;
+                           break;
+                        }
+                    }
+                    HPX_ASSERT( num_threads_ );
                 }
             }
         }
