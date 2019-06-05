@@ -47,7 +47,8 @@ namespace hpx { namespace util { namespace batch_environments {
         std::size_t num_localities_;
         bool valid_;
 
-        HPX_EXPORT void retrieve_number_of_localities(bool debug);
+        HPX_EXPORT void retrieve_number_of_localities();
+        HPX_EXPORT void retrieve_number_of_tasks();
         HPX_EXPORT void retrieve_nodelist(std::vector<std::string> & nodes,
             bool debug);
         HPX_EXPORT void retrieve_number_of_threads();
