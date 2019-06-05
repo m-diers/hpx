@@ -9,13 +9,13 @@
 #define HPX_RUNTIME_ACTIONS_COMPONENT_ACTION_MAR_26_2008_1054AM
 
 #include <hpx/config.hpp>
+#include <hpx/preprocessor/cat.hpp>
+#include <hpx/preprocessor/expand.hpp>
+#include <hpx/preprocessor/nargs.hpp>
 #include <hpx/runtime/actions/basic_action.hpp>
 #include <hpx/runtime/components/pinned_ptr.hpp>
 #include <hpx/runtime/naming/address.hpp>
 #include <hpx/traits/is_future.hpp>
-#include <hpx/util/detail/pp/cat.hpp>
-#include <hpx/util/detail/pp/expand.hpp>
-#include <hpx/util/detail/pp/nargs.hpp>
 
 #include <boost/utility/string_ref.hpp>
 
@@ -216,6 +216,20 @@ namespace hpx { namespace actions
 /// if the second argument with an appended suffix '_action' resolves to a valid,
 /// unqualified C++ type name.
 ///
+#if defined(HPX_COMPUTE_DEVICE_CODE)
+#define HPX_DEFINE_COMPONENT_ACTION(...)                                      \
+    /**/
+#define HPX_DEFINE_COMPONENT_ACTION_3(component, func, name)                  \
+    /**/
+#define HPX_DEFINE_COMPONENT_ACTION_2(component, func)                        \
+    /**/
+#define HPX_DEFINE_COMPONENT_DIRECT_ACTION(...)                               \
+    /**/
+#define HPX_DEFINE_COMPONENT_DIRECT_ACTION_3(component, func, name)           \
+    /**/
+#define HPX_DEFINE_COMPONENT_DIRECT_ACTION_2(component, func)                 \
+    /**/
+#else
 #define HPX_DEFINE_COMPONENT_ACTION(...)                                      \
     HPX_DEFINE_COMPONENT_ACTION_(__VA_ARGS__)                                 \
     /**/
@@ -259,6 +273,7 @@ namespace hpx { namespace actions
         HPX_PP_CAT(func, _action))                                            \
     /**/
 /// \endcond
+#endif
 
 #include <hpx/config/warnings_suffix.hpp>
 

@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <hpx/config.hpp>
+#include <hpx/config/version.hpp>
 #include <hpx/config/config_strings.hpp>
 
 #if defined(HPX_HAVE_PARCELPORT_MPI)
@@ -16,9 +17,9 @@
 #endif
 
 #include <hpx/exception.hpp>
+#include <hpx/preprocessor/stringize.hpp>
 #include <hpx/runtime_fwd.hpp>
 #include <hpx/util/command_line_handling.hpp>
-#include <hpx/util/detail/pp/stringize.hpp>
 #include <hpx/util/find_prefix.hpp>
 #include <hpx/util/format.hpp>
 #include <hpx/version.hpp>
@@ -298,7 +299,7 @@ namespace hpx
         return strm.str();
     }
 
-    ///////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
     char const HPX_CHECK_VERSION[] = HPX_PP_STRINGIZE(HPX_CHECK_VERSION);
     char const HPX_CHECK_BOOST_VERSION[] = HPX_PP_STRINGIZE(HPX_CHECK_BOOST_VERSION);
 }

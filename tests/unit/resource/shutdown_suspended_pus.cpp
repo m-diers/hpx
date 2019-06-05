@@ -66,9 +66,6 @@ void test_scheduler(int argc, char* argv[],
 
 int main(int argc, char* argv[])
 {
-    // NOTE: Periodic priority scheduler not tested because it does not take
-    // into account scheduler states when scheduling work.
-
     {
         // These schedulers should succeed
         std::vector<hpx::resource::scheduling_policy> schedulers =

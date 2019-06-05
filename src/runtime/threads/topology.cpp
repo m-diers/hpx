@@ -18,7 +18,6 @@
 #include <hpx/runtime.hpp>
 #include <hpx/runtime/naming/address.hpp>
 #include <hpx/runtime/threads/cpu_mask.hpp>
-#include <hpx/runtime/threads/topology.hpp>
 
 #include <boost/io/ios_state.hpp>
 
@@ -29,7 +28,6 @@
 #include <mutex>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include <errno.h>
 
@@ -50,6 +48,10 @@
 #if defined(_POSIX_VERSION)
 #include <sys/syscall.h>
 #include <sys/resource.h>
+#endif
+
+#if defined(HPX_HAVE_UNISTD_H)
+#include <unistd.h>
 #endif
 
 namespace hpx { namespace threads { namespace detail
@@ -126,7 +128,26 @@ namespace hpx { namespace threads { namespace detail
 #endif
         return node;
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // abstract away memory page size
+    std::size_t get_memory_page_size_impl()
+    {
+#if defined(HPX_HAVE_UNISTD_H)
+        return sysconf(_SC_PAGE_SIZE);
+#elif defined(HPX_WINDOWS)
+        SYSTEM_INFO systemInfo;
+        GetSystemInfo(&systemInfo);
+        return systemInfo.dwPageSize;
+#else
+        return 4096;
+#endif
+    }
+
 }}}
+
+std::size_t hpx::threads::topology::memory_page_size_ =
+        hpx::threads::detail::get_memory_page_size_impl();
 
 namespace hpx { namespace threads
 {
@@ -553,6 +574,16 @@ namespace hpx { namespace threads
 
                 hwloc_bitmap_free(cpuset);
                 return mask;
+            }
+            else
+            {
+                std::string errstr = std::strerror(errno);
+
+                lk.unlock();
+                HPX_THROW_EXCEPTION(no_success,
+                    "topology::get_thread_affinity_mask_from_lva",
+                    "failed calling 'hwloc_get_area_membind_nodeset', "
+                    "reported error: " + errstr);
             }
         }
 
@@ -1351,7 +1382,6 @@ namespace hpx { namespace threads
                 "hpx::threads::topology::get_area_membind_nodeset",
                 "hwloc_get_area_membind_nodeset failed");
             return bitmap_to_mask(ns, HWLOC_OBJ_MACHINE);
-            std::cout << "error in  ";
         }
         return bitmap_to_mask(ns, HWLOC_OBJ_NUMANODE);
     }

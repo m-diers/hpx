@@ -41,7 +41,7 @@ void test_includes1(ExPolicy policy, IteratorTag)
     std::size_t first_value = gen(); //-V101
     std::iota(std::begin(c1), std::end(c1), first_value);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -95,7 +95,7 @@ void test_includes1_async(ExPolicy p, IteratorTag)
     std::uniform_int_distribution<> dist(0,c1.size()-start-1);
     std::size_t end = start + dist(gen);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -156,9 +156,6 @@ void includes_test1()
 {
     test_includes1<std::random_access_iterator_tag>();
     test_includes1<std::forward_iterator_tag>();
-#if defined(HPX_HAVE_ALGORITHM_INPUT_ITERATOR_SUPPORT)
-    test_includes1<std::input_iterator_tag>();
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -181,7 +178,7 @@ void test_includes2(ExPolicy policy, IteratorTag)
     std::uniform_int_distribution<> dist(0,c1.size()-start-1);
     std::size_t end = start + dist(gen);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -236,7 +233,7 @@ void test_includes2_async(ExPolicy p, IteratorTag)
     std::uniform_int_distribution<> dist(0,c1.size()-start-1);
     std::size_t end = start + dist(gen);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -297,9 +294,6 @@ void includes_test2()
 {
     test_includes2<std::random_access_iterator_tag>();
     test_includes2<std::forward_iterator_tag>();
-#if defined(HPX_HAVE_ALGORITHM_INPUT_ITERATOR_SUPPORT)
-    test_includes2<std::input_iterator_tag>();
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -322,12 +316,12 @@ void test_includes_exception(ExPolicy policy, IteratorTag)
     std::uniform_int_distribution<> dist(0,c1.size()-start-1);
     std::size_t end = start + dist(gen);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     if (start == end)
         ++end;
 
-    HPX_ASSERT(end <= c1.size());
+    HPX_TEST(end <= c1.size());
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -369,12 +363,12 @@ void test_includes_exception_async(ExPolicy p, IteratorTag)
     std::uniform_int_distribution<> dist(0,c1.size()-start-1);
     std::size_t end = start + dist(gen);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     if (start == end)
         ++end;
 
-    HPX_ASSERT(end <= c1.size());
+    HPX_TEST(end <= c1.size());
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -427,9 +421,6 @@ void includes_exception_test()
 {
     test_includes_exception<std::random_access_iterator_tag>();
     test_includes_exception<std::forward_iterator_tag>();
-#if defined(HPX_HAVE_ALGORITHM_INPUT_ITERATOR_SUPPORT)
-    test_includes_exception<std::input_iterator_tag>();
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -452,12 +443,12 @@ void test_includes_bad_alloc(ExPolicy policy, IteratorTag)
     std::uniform_int_distribution<> dist(0,c1.size()-start-1);
     std::size_t end = start + dist(gen);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     if (start == end)
         ++end;
 
-    HPX_ASSERT(end <= c1.size());
+    HPX_TEST(end <= c1.size());
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -498,12 +489,12 @@ void test_includes_bad_alloc_async(ExPolicy p, IteratorTag)
     std::uniform_int_distribution<> dist(0,c1.size()-start-1);
     std::size_t end = start + dist(gen);
 
-    HPX_ASSERT(start <= end);
+    HPX_TEST(start <= end);
 
     if (start == end)
         ++end;
 
-    HPX_ASSERT(end <= c1.size());
+    HPX_TEST(end <= c1.size());
 
     base_iterator start_it = boost::next(std::begin(c1), start);
     base_iterator end_it = boost::next(std::begin(c1), end);
@@ -555,9 +546,6 @@ void includes_bad_alloc_test()
 {
     test_includes_bad_alloc<std::random_access_iterator_tag>();
     test_includes_bad_alloc<std::forward_iterator_tag>();
-#if defined(HPX_HAVE_ALGORITHM_INPUT_ITERATOR_SUPPORT)
-    test_includes_bad_alloc<std::input_iterator_tag>();
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////

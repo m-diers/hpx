@@ -14,10 +14,7 @@
 #include <hpx/traits/get_function_annotation.hpp>
 #include <hpx/traits/is_callable.hpp>
 #include <hpx/util/detail/basic_function.hpp>
-#include <hpx/util/detail/empty_function.hpp>
 #include <hpx/util/detail/function_registration.hpp>
-#include <hpx/util/detail/vtable/function_vtable.hpp>
-#include <hpx/util/detail/vtable/vtable.hpp>
 #include <hpx/util_fwd.hpp>
 
 #include <cstddef>
@@ -39,7 +36,7 @@ namespace hpx { namespace util
     public:
         typedef R result_type;
 
-        function(std::nullptr_t = nullptr) noexcept
+        HPX_CONSTEXPR function(std::nullptr_t = nullptr) noexcept
         {}
 
         function(function const&) = default;
@@ -47,20 +44,26 @@ namespace hpx { namespace util
         function& operator=(function const&) = default;
         function& operator=(function&&) noexcept = default;
 
+        // the split SFINAE prevents MSVC from eagerly instantiating things
         template <typename F, typename FD = typename std::decay<F>::type,
-            typename Enable = typename std::enable_if<
+            typename Enable1 = typename std::enable_if<
                 !std::is_same<FD, function>::value
-             && traits::is_invocable_r<R, FD&, Ts...>::value
+            >::type,
+            typename Enable2 = typename std::enable_if<
+                traits::is_invocable_r<R, FD&, Ts...>::value
             >::type>
         function(F&& f)
         {
             assign(std::forward<F>(f));
         }
 
+        // the split SFINAE prevents MSVC from eagerly instantiating things
         template <typename F, typename FD = typename std::decay<F>::type,
-            typename Enable = typename std::enable_if<
+            typename Enable1 = typename std::enable_if<
                 !std::is_same<FD, function>::value
-             && traits::is_invocable_r<R, FD&, Ts...>::value
+            >::type,
+            typename Enable2 = typename std::enable_if<
+                traits::is_invocable_r<R, FD&, Ts...>::value
             >::type>
         function& operator=(F&& f)
         {
@@ -74,13 +77,6 @@ namespace hpx { namespace util
         using base_type::empty;
         using base_type::target;
     };
-
-    template <typename Sig, bool Serializable>
-    static bool is_empty_function(
-        function<Sig, Serializable> const& f) noexcept
-    {
-        return f.empty();
-    }
 }}
 
 #if defined(HPX_HAVE_THREAD_DESCRIPTION)

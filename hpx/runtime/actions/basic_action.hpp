@@ -13,6 +13,10 @@
 #include <hpx/config.hpp>
 #include <hpx/exception.hpp>
 #include <hpx/lcos/sync_fwd.hpp>
+#include <hpx/preprocessor/cat.hpp>
+#include <hpx/preprocessor/expand.hpp>
+#include <hpx/preprocessor/nargs.hpp>
+#include <hpx/preprocessor/stringize.hpp>
 #include <hpx/runtime/actions/action_support.hpp>
 #include <hpx/runtime/actions/basic_action_fwd.hpp>
 #include <hpx/runtime/actions/continuation.hpp>
@@ -25,6 +29,7 @@
 #include <hpx/runtime/naming/address.hpp>
 #include <hpx/runtime/naming/id_type.hpp>
 #include <hpx/runtime/parcelset/detail/per_action_data_counter_registry.hpp>
+#include <hpx/runtime/serialization/tuple.hpp>
 #include <hpx/runtime/threads/thread_data_fwd.hpp>
 #include <hpx/runtime/threads/thread_enums.hpp>
 #include <hpx/runtime_fwd.hpp>
@@ -36,10 +41,6 @@
 #include <hpx/traits/is_distribution_policy.hpp>
 #include <hpx/traits/promise_local_result.hpp>
 #include <hpx/util/detail/pack.hpp>
-#include <hpx/util/detail/pp/cat.hpp>
-#include <hpx/util/detail/pp/expand.hpp>
-#include <hpx/util/detail/pp/nargs.hpp>
-#include <hpx/util/detail/pp/stringize.hpp>
 #include <hpx/util/get_and_reset_value.hpp>
 #include <hpx/util/invoke_fused.hpp>
 #include <hpx/util/logging.hpp>
@@ -753,6 +754,19 @@ namespace hpx { namespace serialization
 /**/
 
 ///////////////////////////////////////////////////////////////////////////////
+#if defined(HPX_COMPUTE_DEVICE_CODE)
+#define HPX_ACTION_USES_STACK(action, size)                                   \
+/**/
+
+#define HPX_ACTION_USES_SMALL_STACK(action)                                   \
+/**/
+#define HPX_ACTION_USES_MEDIUM_STACK(action)                                  \
+/**/
+#define HPX_ACTION_USES_LARGE_STACK(action)                                   \
+/**/
+#define HPX_ACTION_USES_HUGE_STACK(action)                                    \
+/**/
+#else
 #define HPX_ACTION_USES_STACK(action, size)                                   \
     namespace hpx { namespace traits                                          \
     {                                                                         \
@@ -776,6 +790,12 @@ namespace hpx { namespace serialization
 #define HPX_ACTION_USES_HUGE_STACK(action)                                    \
     HPX_ACTION_USES_STACK(action, threads::thread_stacksize_huge)             \
 /**/
+#endif
+
+#if defined(HPX_COMPUTE_DEVICE_CODE)
+#define HPX_ACTION_DOES_NOT_SUSPEND(action)                                   \
+/**/
+#else
 // This macro is deprecated. It expands to an inline function which will emit a
 // warning.
 #define HPX_ACTION_DOES_NOT_SUSPEND(action)                                   \
@@ -787,7 +807,24 @@ namespace hpx { namespace serialization
         HPX_PP_CAT(HPX_ACTION_DOES_NOT_SUSPEND_, action)();                   \
     }                                                                         \
 /**/
+#endif
 
+///////////////////////////////////////////////////////////////////////////////
+#if defined(HPX_COMPUTE_DEVICE_CODE)
+#define HPX_ACTION_HAS_PRIORITY(action, priority)                             \
+/**/
+#define HPX_ACTION_HAS_LOW_PRIORITY(action)                                   \
+/**/
+#define HPX_ACTION_HAS_NORMAL_PRIORITY(action)                                \
+/**/
+#define HPX_ACTION_HAS_HIGH_PRIORITY(action)                                  \
+/**/
+#define HPX_ACTION_HAS_HIGH_RECURSIVE_PRIORITY(action)                        \
+/**/
+// obsolete, kept for compatibility
+#define HPX_ACTION_HAS_CRITICAL_PRIORITY(action)                              \
+/**/
+#else
 ///////////////////////////////////////////////////////////////////////////////
 #define HPX_ACTION_HAS_PRIORITY(action, priority)                             \
     namespace hpx { namespace traits                                          \
@@ -822,6 +859,7 @@ namespace hpx { namespace serialization
 #define HPX_ACTION_HAS_CRITICAL_PRIORITY(action)                              \
     HPX_ACTION_HAS_PRIORITY(action, threads::thread_priority_high_recursive)  \
 /**/
+#endif
 
 /// \endcond
 
@@ -872,9 +910,14 @@ namespace hpx { namespace serialization
 /// defined using one of the \a HPX_DEFINE_COMPONENT_ACTION macros. It has to
 /// be visible in all translation units using the action, thus it is
 /// recommended to place it into the header file defining the component.
+#if defined(HPX_COMPUTE_DEVICE_CODE)
+#define HPX_REGISTER_ACTION_DECLARATION(...)                                  \
+/**/
+#else
 #define HPX_REGISTER_ACTION_DECLARATION(...)                                  \
     HPX_REGISTER_ACTION_DECLARATION_(__VA_ARGS__)                             \
 /**/
+#endif
 
 /// \def HPX_REGISTER_ACTION(action)
 ///
@@ -904,9 +947,14 @@ namespace hpx { namespace serialization
 ///       \a HPX_REGISTER_ACTION_ID should be used for a particular action,
 ///       never both.
 ///
+#if defined(HPX_COMPUTE_DEVICE_CODE)
+#define HPX_REGISTER_ACTION(...)                                              \
+/**/
+#else
 #define HPX_REGISTER_ACTION(...)                                              \
     HPX_REGISTER_ACTION_(__VA_ARGS__)                                         \
 /**/
+#endif
 
 /// \def HPX_REGISTER_ACTION_ID(action, actionname, actionid)
 ///
@@ -939,9 +987,14 @@ namespace hpx { namespace serialization
 ///       \a HPX_REGISTER_ACTION_ID should be used for a particular action,
 ///       never both.
 ///
+#if defined(HPX_COMPUTE_DEVICE_CODE)
+#define HPX_REGISTER_ACTION_ID(action, actionname, actionid)                  \
+/**/
+#else
 #define HPX_REGISTER_ACTION_ID(action, actionname, actionid)                  \
     HPX_REGISTER_ACTION_2(action, actionname)                                 \
     HPX_REGISTER_ACTION_FACTORY_ID(actionname, actionid)                      \
 /**/
+#endif
 
 #endif /*HPX_RUNTIME_ACTIONS_BASIC_ACTION_HPP*/

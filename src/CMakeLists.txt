@@ -282,19 +282,33 @@ else()
     FOLDER "Core")
 endif()
 
-target_link_libraries(hpx ${HPX_TLL_PUBLIC} ${HPX_LIBRARIES})
+target_include_directories(hpx PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/hpx>)
+target_link_libraries(hpx PUBLIC ${HPX_LIBRARIES})
 if(HPX_ADDITIONAL_RUNTIME_DEPENDENCIES)
-  target_link_libraries(hpx ${HPX_TLL_PUBLIC} ${HPX_ADDITIONAL_RUNTIME_DEPENDENCIES})
+  target_link_libraries(hpx PUBLIC ${HPX_ADDITIONAL_RUNTIME_DEPENDENCIES})
 endif()
 if(HPX_ADDITIONAL_PRIVATE_RUNTIME_DEPENDENCIES)
-  target_link_libraries(hpx ${HPX_TLL_PRIVATE} ${HPX_ADDITIONAL_PRIVATE_RUNTIME_DEPENDENCIES})
+  target_link_libraries(hpx PRIVATE ${HPX_ADDITIONAL_PRIVATE_RUNTIME_DEPENDENCIES})
 endif()
 
 foreach(_plugin ${HPX_STATIC_PARCELPORT_PLUGINS})
   if (_parcelport_${_plugin}_LIBRARIES)
-    target_link_libraries(hpx ${HPX_TLL_PUBLIC} ${_parcelport_${_plugin}_LIBRARIES})
+    target_link_libraries(hpx PUBLIC ${_parcelport_${_plugin}_LIBRARIES})
     hpx_export_targets(${_parcelport_${_plugin}_LIBRARIES})
   endif()
+endforeach()
+
+# integrate the hpx modules with the main library
+foreach(_module ${HPX_LIBS})
+  # add module binaries as PRIVATE dependencies to the core hpx library to
+  # avoid dependent applicatons have to link against those
+  target_link_libraries(hpx PRIVATE hpx_${_module})
+
+  # add module include directories as PUBLIC to core hpx library to enable
+  # compilation against indirectly included headers
+  get_target_property(_module_includes hpx_${_module} INTERFACE_INCLUDE_DIRECTORIES)
+  target_include_directories(hpx PUBLIC ${_module_includes})
 endforeach()
 
 set_property(TARGET hpx APPEND
@@ -338,6 +352,14 @@ if(NOT HPX_WITH_STATIC_LINKING)
         ${hpx_init_SOURCES} ${hpx_init_HEADERS})
     endif()
   endif()
+  target_include_directories(hpx_init PRIVATE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>)
+
+  foreach(_module ${HPX_LIBS})
+    # add module include directories as PRIVATE to the hpx_init library to
+    # enable its compilation against indirectly included headers
+    get_target_property(_module_includes hpx_${_module} INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(hpx_init PRIVATE ${_module_includes})
+  endforeach()
 
   set_property(TARGET hpx_init APPEND
     PROPERTY COMPILE_DEFINITIONS
@@ -377,6 +399,15 @@ if(HPX_WITH_DYNAMIC_HPX_MAIN AND (("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux") OR (
       "HPX_APPLICATION_EXPORTS"
       "HPX_ENABLE_ASSERT_HANDLER")
 
+    target_include_directories(hpx_wrap PRIVATE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>)
+
+    foreach(_module ${HPX_LIBS})
+      # add module include directories as PRIVATE to the hpx_wrap library to
+      # enable its compilation against indirectly included headers
+      get_target_property(_module_includes hpx_${_module} INTERFACE_INCLUDE_DIRECTORIES)
+      target_include_directories(hpx_wrap PRIVATE ${_module_includes})
+    endforeach()
+
     set_property(TARGET hpx_wrap PROPERTY FOLDER "Core")
     set(hpx_targets ${hpx_targets} hpx_wrap)
   endif()
@@ -394,6 +425,9 @@ foreach(_keyword PUBLIC;PRIVATE)
     if(NOT HPX_WITH_STATIC_LINKING)
       target_compile_definitions(hpx_init ${_keyword} ${_flag})
     endif()
+    foreach(_module ${HPX_LIBS})
+      target_compile_definitions(hpx_${_module} ${_keyword} ${_flag})
+    endforeach()
   endforeach()
 
   get_property(HPX_TARGET_COMPILE_OPTIONS_VAR
@@ -407,6 +441,9 @@ foreach(_keyword PUBLIC;PRIVATE)
     if(NOT HPX_WITH_STATIC_LINKING)
       target_compile_options(hpx_init ${_keyword} ${_flag})
     endif()
+    foreach(_module ${HPX_LIBS})
+      target_compile_options(hpx_${_module} ${_keyword} ${_flag})
+    endforeach()
   endforeach()
 endforeach()
 

@@ -590,7 +590,7 @@ namespace hpx { namespace threads { namespace detail
                 detail::scheduling_callbacks callbacks(
                     util::deferred_call(    //-V107
                         &policies::scheduler_base::idle_callback,
-                        sched_.get(), global_thread_num),
+                        sched_.get(), thread_num),
                     nullptr);
 
                 if (mode_ & policies::do_background_work)
@@ -715,7 +715,7 @@ namespace hpx { namespace threads { namespace detail
             new_state_ex, priority,
             thread_schedule_hint(
                 static_cast<std::int16_t>(get_worker_thread_num())),
-            ec);
+            true, ec);
     }
 
     template <typename Scheduler>
@@ -728,7 +728,7 @@ namespace hpx { namespace threads { namespace detail
             newstate_ex, priority,
             thread_schedule_hint(
                 static_cast<std::int16_t>(get_worker_thread_num())),
-            nullptr, ec);
+            nullptr, true, ec);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -854,7 +854,6 @@ namespace hpx { namespace threads { namespace detail
 
         return executed_phases - reset_executed_phases;
     }
-#endif
 
 #if defined(HPX_HAVE_THREAD_IDLE_RATES)
     template <typename Scheduler>
@@ -1279,8 +1278,8 @@ namespace hpx { namespace threads { namespace detail
         return std::int64_t(
             (double(tfunc_total) - double(exec_total)) * timestamp_scale_);
     }
-#endif
-#endif
+#endif // HPX_HAVE_THREAD_IDLE_RATES
+#endif // HPX_HAVE_THREAD_CUMULATIVE_COUNTS
 
 #if defined(HPX_HAVE_BACKGROUND_THREAD_COUNTERS) && defined(HPX_HAVE_THREAD_IDLE_RATES)
     ////////////////////////////////////////////////////////////
@@ -1530,7 +1529,7 @@ namespace hpx { namespace threads { namespace detail
             (cleanup_total / double(tfunc_total - exec_total));
         return std::int64_t(10000. * percent);    // 0.01 percent
     }
-#endif
+#endif // HPX_HAVE_THREAD_CREATION_AND_CLEANUP_RATES
 
     template <typename Scheduler>
     std::int64_t scheduled_thread_pool<Scheduler>::avg_idle_rate_all(bool reset)
@@ -1612,7 +1611,7 @@ namespace hpx { namespace threads { namespace detail
             1. - (double(exec_time) / double(tfunc_time));
         return std::int64_t(10000. * percent);    // 0.01 percent
     }
-#endif
+#endif // HPX_HAVE_THREAD_IDLE_RATES
 
     template <typename Scheduler>
     std::int64_t scheduled_thread_pool<Scheduler>::get_idle_loop_count(
@@ -1834,7 +1833,9 @@ namespace hpx { namespace threads { namespace detail
         // deadlocks when multiple HPX threads try to resume or suspend pus.
         std::unique_lock<typename Scheduler::pu_mutex_type>
             l(sched_->Scheduler::get_pu_mutex(virt_core), std::defer_lock);
-        util::yield_while([&l]()
+
+        util::yield_while(
+            [&l]()
             {
                 return !l.try_lock();
             }, "scheduled_thread_pool::suspend_processing_unit_internal",
@@ -1888,7 +1889,7 @@ namespace hpx { namespace threads { namespace detail
                     "this thread pool does not support suspending "
                     "processing units"));
         }
-        else if (!sched_->Scheduler::has_thread_stealing() &&
+        else if (!sched_->Scheduler::has_thread_stealing(virt_core) &&
             hpx::this_thread::get_pool() == this)
         {
             return hpx::make_exceptional_future<void>(
@@ -1926,7 +1927,7 @@ namespace hpx { namespace threads { namespace detail
 
         if (threads::get_self_ptr())
         {
-            if (!sched_->Scheduler::has_thread_stealing() &&
+            if (!sched_->Scheduler::has_thread_stealing(virt_core) &&
                 hpx::this_thread::get_pool() == this)
             {
                 HPX_THROW_EXCEPTION(invalid_status,
@@ -2036,3 +2037,5 @@ namespace hpx { namespace threads { namespace detail
         }
     }
 }}}
+
+#endif

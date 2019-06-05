@@ -4,9 +4,7 @@
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-if((NOT MSVC) OR HPX_WITH_VCPKG)
-  set(boost_library_dependencies ${Boost_LIBRARIES})
-endif()
+set(boost_library_dependencies ${Boost_LIBRARIES})
 
 set(benchmarks
     agas_cache_timings
@@ -19,10 +17,16 @@ set(benchmarks
     print_heterogeneous_payloads
     resume_suspend
     skynet
-    start_stop
     timed_task_spawn
     wait_all_timings
 )
+
+if(NOT HPX_WITH_SANITIZERS)
+  set(benchmarks
+      ${benchmarks}
+      start_stop
+     )
+endif()
 
 if(HPX_WITH_DATAPAR_VC OR HPX_WITH_DATAPAR_BOOST_SIMD)
   set(benchmarks
@@ -40,9 +44,9 @@ if(HPX_WITH_EXAMPLES_OPENMP)
      )
 
   set(openmp_homogeneous_timed_task_spawn_FLAGS NOLIBS
-      DEPENDENCIES ${boost_library_dependencies})
-  set(openmp_homogeneous_timed_task_spawn_FLAGS NOLIBS
-      DEPENDENCIES ${boost_library_dependencies})
+      DEPENDENCIES ${boost_library_dependencies} hpx_config hpx_preprocessor)
+  set(openmp_parallel_region_FLAGS NOLIBS
+      DEPENDENCIES ${boost_library_dependencies} hpx_config hpx_preprocessor)
 endif()
 
 if(HPX_WITH_EXAMPLES_QTHREADS)
@@ -56,11 +60,11 @@ if(HPX_WITH_EXAMPLES_QTHREADS)
 
   set(qthreads_homogeneous_timed_task_spawn_FLAGS NOLIBS
       DEPENDENCIES ${boost_library_dependencies}
-                  ${QTHREADS_LIBRARIES})
+                  ${QTHREADS_LIBRARIES} hpx_config hpx_preprocessor)
 
   set(qthreads_heterogeneous_timed_task_spawn_FLAGS NOLIBS
       DEPENDENCIES ${boost_library_dependencies}
-                  ${QTHREADS_LIBRARIES})
+                  ${QTHREADS_LIBRARIES} hpx_config hpx_preprocessor)
 endif()
 
 if(HPX_WITH_EXAMPLES_TBB)
@@ -73,7 +77,7 @@ if(HPX_WITH_EXAMPLES_TBB)
 
   set(tbb_homogeneous_timed_task_spawn_FLAGS NOLIBS
       DEPENDENCIES ${boost_library_dependencies}
-                   ${TBB_LIBRARIES})
+                   ${TBB_LIBRARIES} hpx_config hpx_preprocessor)
 endif()
 
 set(hpx_homogeneous_timed_task_spawn_executors_FLAGS DEPENDENCIES iostreams_component)
@@ -83,13 +87,13 @@ set(skynet_FLAGS DEPENDENCIES iostreams_component)
 set(wait_all_timings_FLAGS DEPENDENCIES iostreams_component)
 
 set(delay_baseline_FLAGS NOLIBS
-    DEPENDENCIES ${boost_library_dependencies})
+    DEPENDENCIES ${boost_library_dependencies} hpx_config hpx_preprocessor)
 
 set(delay_baseline_threaded_FLAGS
-    DEPENDENCIES ${boost_library_dependencies})
+    DEPENDENCIES ${boost_library_dependencies} hpx_config hpx_preprocessor)
 
 set(print_heterogeneous_payloads_FLAGS NOLIBS
-    DEPENDENCIES ${boost_library_dependencies})
+    DEPENDENCIES ${boost_library_dependencies} hpx_config hpx_preprocessor)
 
 set(benchmarks ${benchmarks}
     hpx_tls_overhead
@@ -168,6 +172,15 @@ foreach(benchmark ${benchmarks})
                      EXCLUDE_FROM_ALL
                      HPX_PREFIX ${HPX_BUILD_PREFIX}
                      FOLDER "Benchmarks/Local")
+
+  list(FIND ${benchmark}_FLAGS NOLIBS has_NOLIBS)
+  if (NOT has_NOLIBS EQUAL -1)
+    target_compile_definitions(${benchmark}_test PRIVATE
+                               HPX_FORMAT_EXPORT= #empty
+                               HPX_NO_VERSION_CHECK)
+    target_sources(${benchmark}_test
+                   PRIVATE ${PROJECT_SOURCE_DIR}/src/util/format.cpp)
+  endif()
 
   if(NOT "${${benchmark}_PARAMETERS}" MATCHES NO_HPX_MAIN)
     add_hpx_test("tests.performance.local" ${benchmark} ${${benchmark}_PARAMETERS})

@@ -14,6 +14,7 @@
 #include <hpx/performance_counters/counter_creators.hpp>
 #include <hpx/performance_counters/counters.hpp>
 #include <hpx/performance_counters/manage_counter_type.hpp>
+#include <hpx/preprocessor/stringize.hpp>
 #include <hpx/runtime/actions/continuation.hpp>
 #include <hpx/runtime/applier/applier.hpp>
 #include <hpx/runtime/config_entry.hpp>
@@ -30,7 +31,6 @@
 #include <hpx/util/bind.hpp>
 #include <hpx/util/bind_front.hpp>
 #include <hpx/util/deferred_call.hpp>
-#include <hpx/util/detail/pp/stringize.hpp>
 #include <hpx/util/format.hpp>
 #include <hpx/util/io_service_pool.hpp>
 #include <hpx/util/itt_notify.hpp>
@@ -1532,32 +1532,44 @@ namespace hpx { namespace parcelset
     parcelhandler::get_parcelport_factories()
     {
         static std::vector<plugins::parcelport_factory_base *> factories;
-        if(factories.empty())
+#if defined(HPX_HAVE_NETWORKING)
+        if(factories.empty() && hpx::is_networking_enabled())
         {
             init_static_parcelport_factories(factories);
         }
+#endif
         return factories;
     }
 
     void parcelhandler::add_parcelport_factory(
         plugins::parcelport_factory_base *factory)
     {
-        auto & factories = get_parcelport_factories();
-        if (std::find(factories.begin(), factories.end(), factory) !=
-            factories.end())
+#if defined(HPX_HAVE_NETWORKING)
+        if (hpx::is_networking_enabled())
         {
-            return;
+            auto & factories = get_parcelport_factories();
+            if (std::find(factories.begin(), factories.end(), factory) !=
+                factories.end())
+            {
+                return;
+            }
+            factories.push_back(factory);
         }
-        factories.push_back(factory);
+#endif
     }
 
     void parcelhandler::init(int *argc, char ***argv,
         util::command_line_handling &cfg)
     {
-        for (plugins::parcelport_factory_base* factory : get_parcelport_factories())
+#if defined(HPX_HAVE_NETWORKING)
+        HPX_ASSERT(hpx::is_networking_enabled());
+
+        for (plugins::parcelport_factory_base* factory :
+            get_parcelport_factories())
         {
             factory->init(argc, argv, cfg);
         }
+#endif
     }
 
     std::vector<std::string> parcelhandler::load_runtime_configuration()

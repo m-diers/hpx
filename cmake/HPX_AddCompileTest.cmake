@@ -81,8 +81,15 @@ function(add_hpx_lib_header_tests lib)
       set(all_headers ${all_headers} "#include <hpx/${relpath}>\n")
 
       add_library(tests.headers.${lib}.${test_name} ${CMAKE_CURRENT_BINARY_DIR}/${full_test_file})
-      target_link_libraries(tests.headers.${lib}.${test_name} hpx.${lib})
+      target_link_libraries(tests.headers.${lib}.${test_name} hpx_${lib})
       add_dependencies(tests.headers.${lib} tests.headers.${lib}.${test_name})
+
+      add_test(NAME "tests.headers.${lib}.${test_name}"
+        COMMAND ${CMAKE_COMMAND}
+        --build ${CMAKE_BINARY_DIR}
+          --target tests.headers.${lib}.${test_name}
+          --config $<CONFIGURATION>
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     endif()
   endforeach()
 
@@ -95,6 +102,13 @@ function(add_hpx_lib_header_tests lib)
     "#endif\n")
 
   add_library(tests.headers.${lib}.${test_name} "${CMAKE_CURRENT_BINARY_DIR}/${test_name}.cpp")
-  target_link_libraries(tests.headers.${lib}.${test_name} hpx.${lib})
+  target_link_libraries(tests.headers.${lib}.${test_name} hpx_${lib})
   add_dependencies(tests.headers.${lib} tests.headers.${lib}.${test_name})
+
+  add_test(NAME "tests.headers.${lib}.${test_name}"
+    COMMAND ${CMAKE_COMMAND}
+    --build ${CMAKE_BINARY_DIR}
+      --target tests.headers.${lib}.${test_name}
+      --config $<CONFIGURATION>
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endfunction()

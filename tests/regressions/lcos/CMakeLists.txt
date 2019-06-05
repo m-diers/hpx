@@ -86,6 +86,11 @@ set(wait_for_1751_PARAMETERS THREADS_PER_LOCALITY 4)
 set(wait_all_hang_1946_PARAMETERS THREADS_PER_LOCALITY 8)
 set(wait_all_hang_1946_FLAGS DEPENDENCIES iostreams_component)
 
+if(HPX_WITH_NETWORKING)
+  set(tests ${tests} barrier_3792)
+  set(barrier_3792_PARAMETERS LOCALITIES 3 THREADS_PER_LOCALITY 1)
+endif()
+
 # Create test cases
 foreach(test ${tests})
   set(sources

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 '''
 Copyright (c) 2018 Thomas Heller
 
@@ -29,24 +29,28 @@ cmake_header = f'''# Copyright (c) 2019 The STE||AR-Group
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 '''
 
-readme_template = f'''<!-- Copyright (c) 2019 The STE||AR-Group                                         -->
-<!--                                                                              -->
-<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
-<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)        -->
+readme_template = f'''
+..
+   Copyright (c) 2019 The STE||AR-Group
 
-# {lib_name}
+   Distributed under the Boost Software License, Version 1.0. (See accompanying
+   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+===
+{lib_name}
+===
 
 This library is part of HPX.
 
-Extensive documentation can be found at
-https://stellar-group.github.io/hpx/docs/sphinx/latest/html/libs/{lib_name}/docs/index.html
+Documentation can be found `here
+<https://stellar-group.github.io/hpx/docs/sphinx/latest/html/libs/{lib_name}/docs/index.html>`__.
 '''
 
 index_rst = f'''..
-    Copyright (c) 2019 The STE||AR-Group
+   Copyright (c) 2019 The STE||AR-Group
 
-    Distributed under the Boost Software License, Version 1.0. (See accompanying
-    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+   Distributed under the Boost Software License, Version 1.0. (See accompanying
+   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 .. _libs_{lib_name}:
 
@@ -57,14 +61,20 @@ index_rst = f'''..
 '''
 
 root_cmakelists_template = cmake_header + f'''
-# We require at least CMake V{cmake_version}
 cmake_minimum_required(VERSION {cmake_version} FATAL_ERROR)
 
 project(HPX.{lib_name} CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${{CMAKE_CURRENT_SOURCE_DIR}}/cmake")
 
-option(HPX_{lib_name_upper}_WITH_TESTS "Include tests for {lib_name}" On)
+include(HPX_AddDefinitions)
+include(HPX_Option)
+
+hpx_option(HPX_{lib_name_upper}_WITH_TESTS
+  BOOL
+  "Build HPX {lib_name} module tests. (default: ON)"
+  ON ADVANCED
+  CATEGORY "Modules")
 
 message(STATUS "{lib_name}: Configuring")
 
@@ -84,7 +94,7 @@ endif()
 '''
 
 tests_cmakelists_template = cmake_header + f'''
-if (NOT HPX_WITH_TESTS AND HPX_TOP_LEVEL)
+if (NOT HPX_WITH_TESTS)
   return()
 endif()
 if (NOT HPX_{lib_name_upper}_WITH_TESTS)
@@ -141,8 +151,8 @@ if lib_name != '--recreate-index':
     ################################################################################
 
     ################################################################################
-    # Generate Readme skeleton
-    f = open(os.path.join(lib_name, 'Readme.md'), 'w')
+    # Generate README skeleton
+    f = open(os.path.join(lib_name, 'README.rst'), 'w')
     f.write(readme_template)
     ################################################################################
 
@@ -191,54 +201,48 @@ libs = sorted([ lib for lib in os.listdir(cwd) if os.path.isdir(lib) ])
 
 # Adapting top level CMakeLists.txt
 libs_cmakelists = cmake_header + f'''
-# This file is auto generated. Please do not edit manually
-
-include(HPX_CreateSymbolicLink)
-
-# We create a special directory to collect all our modular headers, to make
-# it easier to include those files. The directory is created from scratch if
-# changes occured to avoid dangling links
-execute_process(COMMAND "${{CMAKE_COMMAND}}" -E remove_directory ${{CMAKE_BINARY_DIR}}/include/hpx)
-execute_process(COMMAND "${{CMAKE_COMMAND}}" -E make_directory ${{CMAKE_BINARY_DIR}}/include/hpx)
+# This file is auto generated. Please do not edit manually.
 '''
 
-libs_cmake_dir_add = '''
-add_subdirectory({lib})
-file(GLOB PP_INCLUDE_LIST
-  LIST_DIRECTORIES true ${{DO_CONFIGURE_DEPENDS}}
-  RELATIVE ${{CMAKE_CURRENT_SOURCE_DIR}}/{lib}/include/hpx/
-  ${{CMAKE_CURRENT_SOURCE_DIR}}/{lib}/include/hpx/*)
-foreach(include ${{PP_INCLUDE_LIST}})
-  create_symbolic_link(
-    ${{CMAKE_CURRENT_SOURCE_DIR}}/{lib}/include/hpx/${{include}}
-    ${{CMAKE_BINARY_DIR}}/include/hpx/${{include}})
+libs_cmakelists += '''
+set(HPX_LIBS
+'''
+for lib in libs:
+    if not lib.startswith('_'):
+        libs_cmakelists += f'  {lib}\n'
+libs_cmakelists += '  CACHE INTERNAL "" FORCE\n)\n'
+
+libs_cmakelists += '''
+foreach(lib ${HPX_LIBS})
+  add_subdirectory(${lib})
 endforeach()
 '''
 
-for lib in libs:
-    # Ignore subdirectories starting with _
-    if not lib.startswith('_'):
-        libs_cmakelists += libs_cmake_dir_add.format(lib = lib)
 f = open(os.path.join(cwd, 'CMakeLists.txt'), 'w')
 f.write(libs_cmakelists)
 
-# Adapting top level index.rst
-index_rst = f'''..
-    Copyright (c) 2018-2019 The STE||AR-Group
+# Adapting all_modules.rst
+all_modules_rst = f'''..
+   Copyright (c) 2018-2019 The STE||AR-Group
 
-    Distributed under the Boost Software License, Version 1.0. (See accompanying
-    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+   Distributed under the Boost Software License, Version 1.0. (See accompanying
+   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+.. _all_modules:
+
+===========
+All modules
+===========
 
 .. toctree::
-   :caption: Libraries
    :maxdepth: 2
 
 '''
 for lib in libs:
-    index_rst += f'   /libs/{lib}/docs/index.rst\n'
+    all_modules_rst += f'   /libs/{lib}/docs/index.rst\n'
 
-f = open(os.path.join(cwd, 'index.rst'), 'w')
-f.write(index_rst)
+f = open(os.path.join(cwd, 'all_modules.rst'), 'w')
+f.write(all_modules_rst)
 
 ################################################################################
 
